@@ -3,6 +3,10 @@ const searchBtn = document.getElementById("searchBtn");
 const errorMsg = document.getElementById("errorMsg");
 const weatherResult = document.getElementById("weatherResult");
 const forecastResult = document.getElementById("forecastResult");
+const hourlyResult = document.getElementById("hourlyResult");
+const cityTime = document.getElementById("cityTime");
+
+let clockIntervalId = null;
 
 searchBtn.addEventListener("click", getWeather);
 cityInput.addEventListener("keypress", (e) => {
@@ -30,6 +34,7 @@ async function getWeather() {
     const forecastData = await forecastRes.json();
 
     displayWeather(weatherData);
+    displayHourly(forecastData);
     displayForecast(forecastData);
   } catch (err) {
     showError(err.message);
@@ -47,6 +52,52 @@ function displayWeather(data) {
   document.getElementById("humidity").textContent = `${data.main.humidity}%`;
   document.getElementById("windSpeed").textContent = `${data.wind.speed} m/s`;
   document.getElementById("pressure").textContent = `${data.main.pressure} hPa`;
+
+  startCityClock(data.timezone);
+}
+
+function startCityClock(tzOffsetSeconds) {
+  clearInterval(clockIntervalId);
+
+  function tick() {
+    const localTime = new Date(Date.now() + tzOffsetSeconds * 1000);
+    cityTime.textContent = localTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "UTC",
+    });
+  }
+
+  tick();
+  clockIntervalId = setInterval(tick, 1000);
+}
+
+function displayHourly(data) {
+  const upcoming = data.list.slice(0, 2);
+  const tzOffset = data.city.timezone;
+
+  hourlyResult.innerHTML = "";
+  hourlyResult.classList.remove("hidden");
+
+  for (const item of upcoming) {
+    const localTime = new Date((item.dt + tzOffset) * 1000);
+    const timeLabel = localTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      hour12: true,
+      timeZone: "UTC",
+    });
+
+    const slot = document.createElement("div");
+    slot.className = "hourly-slot";
+    slot.innerHTML = `
+      <span class="hourly-time">${timeLabel}</span>
+      <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png" alt="${item.weather[0].description}">
+      <span class="hourly-temp">${Math.round(item.main.temp)}°</span>
+    `;
+
+    hourlyResult.appendChild(slot);
+  }
 }
 
 function groupForecastByDay(list) {
@@ -99,7 +150,9 @@ function displayForecast(data) {
 }
 
 function showError(message) {
+  clearInterval(clockIntervalId);
   weatherResult.classList.add("hidden");
+  hourlyResult.classList.add("hidden");
   forecastResult.classList.add("hidden");
   errorMsg.classList.remove("hidden");
   errorMsg.textContent = message;
