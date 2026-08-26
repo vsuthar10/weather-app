@@ -8,6 +8,16 @@ const cityTime = document.getElementById("cityTime");
 
 let clockIntervalId = null;
 
+const RENDER_API = "https://weather-app-backend-iye5.onrender.com";
+const sameOriginAsBackend =
+  ["localhost", "127.0.0.1", ""].includes(window.location.hostname) ||
+  window.location.hostname.endsWith(".onrender.com");
+const API_BASE = sameOriginAsBackend ? "" : RENDER_API;
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+
 searchBtn.addEventListener("click", getWeather);
 cityInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") getWeather();
@@ -17,8 +27,8 @@ async function getWeather() {
   const city = cityInput.value.trim();
   if (!city) return;
 
-  const weatherUrl = `/api/weather?city=${city}`;
-  const forecastUrl = `/api/forecast?city=${city}`;
+  const weatherUrl = `${API_BASE}/api/weather?city=${city}`;
+  const forecastUrl = `${API_BASE}/api/forecast?city=${city}`;
 
   try {
     const [weatherRes, forecastRes] = await Promise.all([
