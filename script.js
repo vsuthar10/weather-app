@@ -4,6 +4,11 @@ const errorMsg = document.getElementById("errorMsg");
 const weatherResult = document.getElementById("weatherResult");
 const forecastResult = document.getElementById("forecastResult");
 
+const isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+const API_BASE = isLocal
+  ? "http://localhost:3000"
+  : "https://weather-app-backend-iye5.onrender.com";
+
 searchBtn.addEventListener("click", getWeather);
 cityInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") getWeather();
@@ -13,8 +18,8 @@ async function getWeather() {
   const city = cityInput.value.trim();
   if (!city) return;
 
-  const weatherUrl = `http://localhost:3000/api/weather?city=${city}`;
-  const forecastUrl = `http://localhost:3000/api/forecast?city=${city}`;
+  const weatherUrl = `${API_BASE}/api/weather?city=${city}`;
+  const forecastUrl = `${API_BASE}/api/forecast?city=${city}`;
 
   try {
     const [weatherRes, forecastRes] = await Promise.all([
