@@ -5,6 +5,8 @@ const weatherResult = document.getElementById("weatherResult");
 const forecastResult = document.getElementById("forecastResult");
 const hourlyResult = document.getElementById("hourlyResult");
 const cityTime = document.getElementById("cityTime");
+const climateResult = document.getElementById("climateResult");
+const climateMonths = document.getElementById("climateMonths");
 
 let clockIntervalId = null;
 
@@ -48,6 +50,22 @@ async function getWeather() {
     displayForecast(forecastData);
   } catch (err) {
     showError(err.message);
+    return;
+  }
+
+  loadClimate(city);
+}
+
+async function loadClimate(city) {
+  try {
+    const climateRes = await fetch(`${API_BASE}/api/climate?city=${city}`);
+    if (!climateRes.ok) {
+      throw new Error("Climate data unavailable");
+    }
+    const climateData = await climateRes.json();
+    displayClimate(climateData);
+  } catch (err) {
+    climateResult.classList.add("hidden");
   }
 }
 
@@ -159,11 +177,65 @@ function displayForecast(data) {
   }
 }
 
+function groupClimateByMonth(data) {
+  const { time, temperature_2m_max, temperature_2m_min, precipitation_sum } = data.daily;
+
+  const now = new Date();
+  const targetMonths = [1, 2, 3].map((offset) => (now.getMonth() + offset) % 12);
+
+  const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+  return targetMonths.map((monthIndex) => {
+    const highs = [];
+    const lows = [];
+    let rainyDays = 0;
+    let totalDays = 0;
+
+    time.forEach((dateStr, i) => {
+      const month = parseInt(dateStr.split("-")[1], 10) - 1;
+      if (month === monthIndex) {
+        highs.push(temperature_2m_max[i]);
+        lows.push(temperature_2m_min[i]);
+        totalDays++;
+        if (precipitation_sum[i] > 1) rainyDays++;
+      }
+    });
+
+    return {
+      monthName: new Date(2020, monthIndex, 1).toLocaleDateString("en-US", { month: "long" }),
+      avgHigh: Math.round(avg(highs)),
+      avgLow: Math.round(avg(lows)),
+      rainChance: Math.round((rainyDays / totalDays) * 100),
+    };
+  });
+}
+
+function displayClimate(data) {
+  const months = groupClimateByMonth(data);
+
+  climateMonths.innerHTML = "";
+  climateResult.classList.remove("hidden");
+
+  for (const month of months) {
+    const card = document.createElement("div");
+    card.className = "climate-month";
+
+    card.innerHTML = `
+      <span class="climate-month-name">${month.monthName}</span>
+      <span class="climate-temps"><strong>${month.avgHigh}°</strong> / ${month.avgLow}°</span>
+      <span class="climate-rain">${month.rainChance}% rain</span>
+    `;
+
+    climateMonths.appendChild(card);
+  }
+}
+
 function showError(message) {
   clearInterval(clockIntervalId);
   weatherResult.classList.add("hidden");
   hourlyResult.classList.add("hidden");
   forecastResult.classList.add("hidden");
+  climateResult.classList.add("hidden");
   errorMsg.classList.remove("hidden");
   errorMsg.textContent = message;
 }
