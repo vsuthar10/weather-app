@@ -55,11 +55,20 @@ app.get('/api/forecast', async (req, res) => {
   }
 });
 
+const climateCache = new Map();
+const CLIMATE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 app.get('/api/climate', async (req, res) => {
   const city = req.query.city;
 
   if (!city) {
     return res.status(400).json({ error: 'City is required' });
+  }
+
+  const cacheKey = city.trim().toLowerCase();
+  const cached = climateCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CLIMATE_CACHE_TTL_MS) {
+    return res.json(cached.data);
   }
 
   try {
@@ -88,6 +97,7 @@ app.get('/api/climate', async (req, res) => {
     }
     const archiveData = await archiveRes.json();
 
+    climateCache.set(cacheKey, { data: archiveData, timestamp: Date.now() });
     res.json(archiveData);
   } catch (err) {
     console.log("ERROR:", err.message);

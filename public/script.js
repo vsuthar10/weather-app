@@ -9,6 +9,7 @@ const climateResult = document.getElementById("climateResult");
 const climateMonths = document.getElementById("climateMonths");
 
 let clockIntervalId = null;
+let climateRequestId = 0;
 
 const RENDER_API = "https://weather-app-backend-iye5.onrender.com";
 const sameOriginAsBackend =
@@ -57,14 +58,24 @@ async function getWeather() {
 }
 
 async function loadClimate(city) {
+  const requestId = ++climateRequestId;
+
+  climateMonths.innerHTML = '<p class="climate-loading">Loading climate outlook…</p>';
+  climateResult.classList.remove("hidden");
+
   try {
     const climateRes = await fetch(`${API_BASE}/api/climate?city=${city}`);
+    if (requestId !== climateRequestId) return;
+
     if (!climateRes.ok) {
       throw new Error("Climate data unavailable");
     }
     const climateData = await climateRes.json();
+    if (requestId !== climateRequestId) return;
+
     displayClimate(climateData);
   } catch (err) {
+    if (requestId !== climateRequestId) return;
     climateResult.classList.add("hidden");
   }
 }
@@ -232,6 +243,7 @@ function displayClimate(data) {
 
 function showError(message) {
   clearInterval(clockIntervalId);
+  climateRequestId++;
   weatherResult.classList.add("hidden");
   hourlyResult.classList.add("hidden");
   forecastResult.classList.add("hidden");
